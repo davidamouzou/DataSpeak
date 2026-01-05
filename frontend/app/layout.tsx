@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
-import "./globals.css";
+import "@/styles/globals.css";
 
 const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
 
