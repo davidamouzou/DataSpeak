@@ -1,5 +1,5 @@
 'use client'
-import { Eye, EyeOff, Mail, Lock, User as UserIcon, Github } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User as UserIcon } from 'lucide-react';
 import { useTranslation } from '@/contexts/LanguageContext';
 import { useUser } from '@/contexts/UserContext';
 import { loginTranslations } from '@/i18n/translations-login';
@@ -10,7 +10,7 @@ import {Logo} from "@/components/layouts/Logo";
 
 type LoginMode = 'signin' | 'signup';
 
-export function LoginPage() {
+function LoginPage() {
   const { language } = useTranslation();
   const { login } = useUser();
   const t = loginTranslations[language].login;
@@ -348,3 +348,5 @@ export function LoginPage() {
     </div>
   );
 }
+
+export default LoginPage;
