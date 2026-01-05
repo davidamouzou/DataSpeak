@@ -1,6 +1,10 @@
-import { Database, FileText, Leaf, Plus, Settings, BarChart3, FileDown, X, ChevronLeft, ChevronRight, Pin, Trash2 } from 'lucide-react';
+import {
+  Database, FileText, Leaf, Plus, Settings, BarChart3, FileDown, X, ChevronLeft, ChevronRight, Pin, Trash2,
+  LucideIcon
+} from 'lucide-react';
 import { useState } from 'react';
 import { DataSourceModal } from './DataSourceModal';
+import {Button} from "@/components/ui/button";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -15,7 +19,7 @@ interface DataSource {
   id: string;
   name: string;
   type: 'postgresql' | 'csv' | 'mongodb';
-  icon: any;
+  icon: LucideIcon;
   count?: number;
 }
 
@@ -61,12 +65,11 @@ export function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose, active
       {/* Sidebar */}
       <aside
         className={`
-          fixed lg:relative top-0 left-0 h-full bg-sidebar border-r border-sidebar-border
+          fixed lg:relative top-14 sm:top-16 lg:top-0 left-0 h-[calc(100vh-56px)] sm:h-[calc(100vh-64px)] lg:h-full bg-sidebar border-r border-sidebar-border
           transition-all duration-300 ease-in-out z-40 flex flex-col shadow-xl lg:shadow-none
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           ${sidebarWidth}
         `}
-        style={{ height: 'calc(100vh - 56px)' }}
       >
         {/* Header with Close/Collapse */}
         <div className="flex items-center justify-between p-3 sm:p-4 border-b border-sidebar-border shrink-0">
@@ -74,10 +77,11 @@ export function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose, active
             <h2 className="text-sidebar-foreground truncate text-sm sm:text-base">Navigation</h2>
           )}
           <div className="flex items-center gap-1">
-            <button 
+            <button
               onClick={onToggleCollapse}
-              className="hidden lg:flex p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
+              className="hidden lg:flex p-2 hover:bg-sidebar-accent rounded-lg transition-colors items-center justify-center relative z-50 cursor-pointer"
               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              type="button"
             >
               {isCollapsed ? (
                 <ChevronRight className="w-5 h-5 text-sidebar-foreground" />
@@ -151,7 +155,7 @@ export function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose, active
               {/* Today */}
               <div>
                 {!isCollapsed && (
-                  <p className="text-muted-foreground mb-1 sm:mb-2 text-xs">Aujourd'hui</p>
+                  <p className="text-muted-foreground mb-1 sm:mb-2 text-xs">Aujourd&#39;hui</p>
                 )}
                 <div className="space-y-1">
                   {conversations.today.map((conv) => (

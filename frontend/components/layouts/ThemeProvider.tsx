@@ -1,4 +1,6 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+"use client";
+
+import React, { createContext, useContext, useEffect, useState } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -12,69 +14,62 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>('system');
-
+  const [mounted, setMounted] = useState(false);
   const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light');
 
-  // Hydrate the theme from localStorage on the client only
+  // 1. Handle Mounting and theme initialization
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      const stored = localStorage.getItem('dataspeak-theme');
-      if (stored) setTheme(stored as Theme);
-    } catch (e) {
-      // ignore parse/storage errors
-    }
+    const stored = localStorage.getItem('dataspeak-theme') as Theme | null;
+    
+    // Use requestAnimationFrame to avoid synchronous setState inside useEffect
+    // which triggers ESLint warning about cascading renders.
+    const raf = requestAnimationFrame(() => {
+      if (stored) {
+        setTheme(stored);
+      }
+      setMounted(true);
+    });
+    
+    return () => cancelAnimationFrame(raf);
   }, []);
 
   useEffect(() => {
+    if (!mounted) return;
+
     const root = window.document.documentElement;
+    
+    const getSystemTheme = () => 
+      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
     const updateTheme = () => {
-      let applied: 'light' | 'dark' = 'light';
-
-      if (theme === 'system') {
-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
-          ? 'dark'
-          : 'light';
-        applied = systemTheme;
-      } else {
-        applied = theme;
-      }
-
+      const applied = theme === 'system' ? getSystemTheme() : theme;
+      
       root.classList.remove('light', 'dark');
       root.classList.add(applied);
       setEffectiveTheme(applied);
+      
+      try {
+        localStorage.setItem('dataspeak-theme', theme);
+      } catch { /* ignore */ }
     };
 
     updateTheme();
 
-    // Listen to system theme changes
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = () => {
-      if (theme === 'system') {
-        updateTheme();
-      }
+      if (theme === 'system') updateTheme();
     };
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [theme]);
+  }, [theme, mounted]);
 
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem('dataspeak-theme', theme);
-    } catch (e) {
-      // ignore write errors (e.g., storage disabled)
-    }
-  }, [theme]);
-
-  // Keyboard shortcut: Ctrl/Cmd + Shift + L to toggle theme
+  // 2. Keyboard shortcut
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
         e.preventDefault();
-        setTheme((current) => {
+        setTheme(current => {
           if (current === 'light') return 'dark';
           if (current === 'dark') return 'system';
           return 'light';
@@ -85,6 +80,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Prevent UI flicker by not rendering children until mounted if they depend on the theme
+  if (!mounted) {
+    return <div style={{ visibility: 'hidden' }}>{children}</div>;
+  }
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme, effectiveTheme }}>

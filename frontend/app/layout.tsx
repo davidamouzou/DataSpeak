@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Outfit } from "next/font/google";
 import "@/styles/globals.css";
+import { ThemeProvider } from '@/components/layouts/ThemeProvider';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { UserProvider } from '@/contexts/UserContext';
 
 const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
 
@@ -29,7 +32,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <LanguageProvider>
+          <UserProvider>
+            <ThemeProvider>
+              {children}
+            </ThemeProvider>
+          </UserProvider>
+        </LanguageProvider>
       </body>
     </html>
   );

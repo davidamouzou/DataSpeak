@@ -1,0 +1,349 @@
+diff --git a/frontend/app/dashboard/page.tsx b/frontend/app/dashboard/page.tsx
+index 94f00d0..72fcde8 100644
+--- a/frontend/app/dashboard/page.tsx
++++ b/frontend/app/dashboard/page.tsx
+@@ -1,9 +1,45 @@
+-function DashboardPage() {
++'use client'
++import LoginPage from "@/app/auth/page";
++import {useState} from "react";
++import {useUser} from "@/contexts/UserContext";
++import {Header} from "@/components/layouts/Header";
++import {Sidebar} from "@/components/layouts/Sidebar";
++import {ChatArea} from "@/components/layouts/ChatArea";
++
++export default function AppContent() {
++    const [sidebarOpen, setSidebarOpen] = useState(false);
++    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
++    const [activeConversationId, setActiveConversationId] = useState<string | null>('conv-1');
++    const { isAuthenticated } = useUser();
++
++    // Show login page if not authenticated
++    if (!isAuthenticated) {
++        return <LoginPage />;
++    }
++
+     return (
+-        <>
++        <div className="flex flex-col h-screen bg-background overflow-hidden">
++            <Header
++                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
++                sidebarOpen={sidebarOpen}
++            />
+
+-        </>
+-    )
+-}
++            <div className="flex flex-1 overflow-hidden pt-16">
++                <Sidebar
++                    isOpen={sidebarOpen}
++                    isCollapsed={sidebarCollapsed}
++                    onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
++                    onClose={() => setSidebarOpen(false)}
++                    activeConversationId={activeConversationId}
++                    onSelectConversation={setActiveConversationId}
++                />
+
+-export default DashboardPage
+\ No newline at end of file
++                <ChatArea
++                    conversationId={activeConversationId}
++                    sidebarCollapsed={sidebarCollapsed}
++                    sidebarOpen={sidebarOpen}
++                />
++            </div>
++        </div>
++    );
++}
+\ No newline at end of file
+diff --git a/frontend/app/layout.tsx b/frontend/app/layout.tsx
+index 5d8b29c..8bd74f3 100644
+--- a/frontend/app/layout.tsx
++++ b/frontend/app/layout.tsx
+@@ -1,6 +1,9 @@
+ import type { Metadata } from "next";
+ import { Geist, Geist_Mono, Outfit } from "next/font/google";
+ import "@/styles/globals.css";
++import { ThemeProvider } from '@/components/layouts/ThemeProvider';
++import { LanguageProvider } from '@/contexts/LanguageContext';
++import { UserProvider } from '@/contexts/UserContext';
+
+ const outfit = Outfit({subsets:['latin'],variable:'--font-sans'});
+
+@@ -29,7 +32,13 @@ export default function RootLayout({
+       <body
+         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+       >
+-        {children}
++        <LanguageProvider>
++          <UserProvider>
++            <ThemeProvider>
++              {children}
++            </ThemeProvider>
++          </UserProvider>
++        </LanguageProvider>
+       </body>
+     </html>
+   );
+diff --git a/frontend/app/page.tsx b/frontend/app/page.tsx
+index cad9a16..dfc63de 100644
+--- a/frontend/app/page.tsx
++++ b/frontend/app/page.tsx
+@@ -1,59 +1,5 @@
+-"use client"
+-import { useState } from 'react';
+-import { Header } from '@/components/layouts/Header';
+-import { Sidebar } from '@/components/layouts/Sidebar';
+-import { ChatArea } from '@/components/layouts/ChatArea';
+-import { ThemeProvider } from '@/components/layouts/ThemeProvider';
+-import { LanguageProvider } from '@/contexts/LanguageContext';
+-import { UserProvider, useUser } from '@/contexts/UserContext';
+-import { LoginPage } from '@/app/auth/page';
+-
+-function AppContent() {
+-    const [sidebarOpen, setSidebarOpen] = useState(false);
+-    const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+-    const [activeConversationId, setActiveConversationId] = useState<string | null>('conv-1');
+-    const { isAuthenticated } = useUser();
+-
+-    // Show login page if not authenticated
+-    if (!isAuthenticated) {
+-        return <LoginPage />;
+-    }
+-
+-    return (
+-        <div className="flex flex-col h-screen bg-background overflow-hidden">
+-            <Header
+-                onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+-                sidebarOpen={sidebarOpen}
+-            />
+-
+-            <div className="flex flex-1 overflow-hidden pt-16">
+-                <Sidebar
+-                    isOpen={sidebarOpen}
+-                    isCollapsed={sidebarCollapsed}
+-                    onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
+-                    onClose={() => setSidebarOpen(false)}
+-                    activeConversationId={activeConversationId}
+-                    onSelectConversation={setActiveConversationId}
+-                />
+-
+-                <ChatArea
+-                    conversationId={activeConversationId}
+-                    sidebarCollapsed={sidebarCollapsed}
+-                    sidebarOpen={sidebarOpen}
+-                />
+-            </div>
+-        </div>
+-    );
+-}
++import AppContent from "@/app/dashboard/page";
+
+ export default function App() {
+-    return (
+-        <LanguageProvider>
+-            <UserProvider>
+-                <ThemeProvider>
+-                    <AppContent />
+-                </ThemeProvider>
+-            </UserProvider>
+-        </LanguageProvider>
+-    );
++    return <AppContent />;
+ }
+\ No newline at end of file
+diff --git a/frontend/components/layouts/Sidebar.tsx b/frontend/components/layouts/Sidebar.tsx
+index 4fbb063..3702f3f 100644
+--- a/frontend/components/layouts/Sidebar.tsx
++++ b/frontend/components/layouts/Sidebar.tsx
+@@ -1,6 +1,10 @@
+-import { Database, FileText, Leaf, Plus, Settings, BarChart3, FileDown, X, ChevronLeft, ChevronRight, Pin, Trash2 } from 'lucide-react';
++import {
++  Database, FileText, Leaf, Plus, Settings, BarChart3, FileDown, X, ChevronLeft, ChevronRight, Pin, Trash2,
++  LucideIcon
++} from 'lucide-react';
+ import { useState } from 'react';
+ import { DataSourceModal } from './DataSourceModal';
++import {Button} from "@/components/ui/button";
+
+ interface SidebarProps {
+   isOpen: boolean;
+@@ -15,7 +19,7 @@ interface DataSource {
+   id: string;
+   name: string;
+   type: 'postgresql' | 'csv' | 'mongodb';
+-  icon: any;
++  icon: LucideIcon;
+   count?: number;
+ }
+
+@@ -74,10 +78,14 @@ export function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose, active
+             <h2 className="text-sidebar-foreground truncate text-sm sm:text-base">Navigation</h2>
+           )}
+           <div className="flex items-center gap-1">
+-            <button
+-              onClick={onToggleCollapse}
+-              className="hidden lg:flex p-2 hover:bg-sidebar-accent rounded-lg transition-colors"
++            <button
++              onClick={(e) => {
++                console.log("Collapse clicked");
++                onToggleCollapse();
++              }}
++              className="hidden lg:flex p-2 hover:bg-sidebar-accent rounded-lg transition-colors items-center justify-center relative z-50 cursor-pointer"
+               aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
++              type="button"
+             >
+               {isCollapsed ? (
+                 <ChevronRight className="w-5 h-5 text-sidebar-foreground" />
+@@ -151,7 +159,7 @@ export function Sidebar({ isOpen, isCollapsed, onToggleCollapse, onClose, active
+               {/* Today */}
+               <div>
+                 {!isCollapsed && (
+-                  <p className="text-muted-foreground mb-1 sm:mb-2 text-xs">Aujourd'hui</p>
++                  <p className="text-muted-foreground mb-1 sm:mb-2 text-xs">Aujourd&#39;hui</p>
+                 )}
+                 <div className="space-y-1">
+                   {conversations.today.map((conv) => (
+diff --git a/frontend/components/layouts/ThemeProvider.tsx b/frontend/components/layouts/ThemeProvider.tsx
+index b2ca383..256fdec 100644
+--- a/frontend/components/layouts/ThemeProvider.tsx
++++ b/frontend/components/layouts/ThemeProvider.tsx
+@@ -1,4 +1,6 @@
+-import { createContext, useContext, useEffect, useState } from 'react';
++"use client";
++
++import React, { createContext, useContext, useEffect, useState } from 'react';
+
+ type Theme = 'light' | 'dark' | 'system';
+
+@@ -12,69 +14,62 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+
+ export function ThemeProvider({ children }: { children: React.ReactNode }) {
+   const [theme, setTheme] = useState<Theme>('system');
+-
++  const [mounted, setMounted] = useState(false);
+   const [effectiveTheme, setEffectiveTheme] = useState<'light' | 'dark'>('light');
+
+-  // Hydrate the theme from localStorage on the client only
++  // 1. Handle Mounting and theme initialization
+   useEffect(() => {
+-    if (typeof window === 'undefined') return;
+-    try {
+-      const stored = localStorage.getItem('dataspeak-theme');
+-      if (stored) setTheme(stored as Theme);
+-    } catch (e) {
+-      // ignore parse/storage errors
+-    }
++    const stored = localStorage.getItem('dataspeak-theme') as Theme | null;
++
++    // Use requestAnimationFrame to avoid synchronous setState inside useEffect
++    // which triggers ESLint warning about cascading renders.
++    const raf = requestAnimationFrame(() => {
++      if (stored) {
++        setTheme(stored);
++      }
++      setMounted(true);
++    });
++
++    return () => cancelAnimationFrame(raf);
+   }, []);
+
+   useEffect(() => {
++    if (!mounted) return;
++
+     const root = window.document.documentElement;
++
++    const getSystemTheme = () =>
++      window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+     const updateTheme = () => {
+-      let applied: 'light' | 'dark' = 'light';
+-
+-      if (theme === 'system') {
+-        const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches
+-          ? 'dark'
+-          : 'light';
+-        applied = systemTheme;
+-      } else {
+-        applied = theme;
+-      }
+-
++      const applied = theme === 'system' ? getSystemTheme() : theme;
++
+       root.classList.remove('light', 'dark');
+       root.classList.add(applied);
+       setEffectiveTheme(applied);
++
++      try {
++        localStorage.setItem('dataspeak-theme', theme);
++      } catch { /* ignore */ }
+     };
+
+     updateTheme();
+
+-    // Listen to system theme changes
+     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+     const handleChange = () => {
+-      if (theme === 'system') {
+-        updateTheme();
+-      }
++      if (theme === 'system') updateTheme();
+     };
+
+     mediaQuery.addEventListener('change', handleChange);
+     return () => mediaQuery.removeEventListener('change', handleChange);
+-  }, [theme]);
++  }, [theme, mounted]);
+
+-  useEffect(() => {
+-    if (typeof window === 'undefined') return;
+-    try {
+-      localStorage.setItem('dataspeak-theme', theme);
+-    } catch (e) {
+-      // ignore write errors (e.g., storage disabled)
+-    }
+-  }, [theme]);
+-
+-  // Keyboard shortcut: Ctrl/Cmd + Shift + L to toggle theme
++  // 2. Keyboard shortcut
+   useEffect(() => {
+     const handleKeyDown = (e: KeyboardEvent) => {
+       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
+         e.preventDefault();
+-        setTheme((current) => {
++        setTheme(current => {
+           if (current === 'light') return 'dark';
+           if (current === 'dark') return 'system';
+           return 'light';
+@@ -86,6 +81,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
+     return () => window.removeEventListener('keydown', handleKeyDown);
+   }, []);
+
++  // Prevent UI flicker by not rendering children until mounted if they depend on the theme
++  if (!mounted) {
++    return <div style={{ visibility: 'hidden' }}>{children}</div>;
++  }
++
+   return (
+     <ThemeContext.Provider value={{ theme, setTheme, effectiveTheme }}>
+       {children}
+diff --git a/frontend/contexts/LanguageContext.tsx b/frontend/contexts/LanguageContext.tsx
+index 9b65493..eb875d9 100644
+--- a/frontend/contexts/LanguageContext.tsx
++++ b/frontend/contexts/LanguageContext.tsx
+@@ -1,3 +1,5 @@
++"use client";
++
+ import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+ import { Language, TranslationKeys } from '@/types/i18n';
+ import { translations } from '@/i18n/translations';
+diff --git a/frontend/contexts/UserContext.tsx b/frontend/contexts/UserContext.tsx
+index 5291d4f..d226718 100644
+--- a/frontend/contexts/UserContext.tsx
++++ b/frontend/contexts/UserContext.tsx
+@@ -1,3 +1,5 @@
++"use client";
++
+ import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+ import { User, UserPreferences, defaultUserPreferences } from '@/types/user';
+
