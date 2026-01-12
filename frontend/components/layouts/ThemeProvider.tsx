@@ -82,13 +82,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Prevent UI flicker by not rendering children until mounted if they depend on the theme
-  if (!mounted) {
-    return <div style={{ visibility: 'hidden' }}>{children}</div>;
-  }
-
   return (
     <ThemeContext.Provider value={{ theme, setTheme, effectiveTheme }}>
-      {children}
+      {!mounted ? (
+        <div style={{ visibility: 'hidden' }}>{children}</div>
+      ) : (
+        children
+      )}
     </ThemeContext.Provider>
   );
 }
